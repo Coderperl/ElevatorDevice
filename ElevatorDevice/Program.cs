@@ -2,44 +2,39 @@
 using Microsoft.Azure.Devices;
 using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
+using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
+using System.Data;
 using System.Net.Http.Json;
 using System.Net.NetworkInformation;
 using System.Text;
 using System.Text.Json.Serialization;
 using static System.Net.WebRequestMethods;
 
-namespace Device.Tv.Livingroom
+namespace ElevatorDevice
 {
     class Program
     {
-        private static DeviceClient deviceClient;
-        private static Twin twin;   
-        private static string elevatorapi = "https://agilewebapi.azurewebsites.net/api/Elevator";   
-        private static string apiUri = "https://localhost:7169/Create";
+        private static DeviceClient _deviceClient;        
+        private static Twin twin;
+        private static string elevatorapi = "https://agilewebapi.azurewebsites.net/api/Elevator";
+        private static string apiUri = "https://agilewebapi.azurewebsites.net/api/Create";
         public static List<ElevatorItem> elevatorItems;
+        private static int _Intervall = 5000;        
+        private static bool _connected = false;
+        private static string _deviceId = "";
 
-        public static async Task Main()
+        
+        private static async Task Main()
         {
-            GetElevators();
-            await GetConfigurationAsync();
-
+            await Setup();
+            await Loop();
         }
-
-        private static async void GetElevators()
+        private static async Task Setup()
         {
-            Console.Clear();
-            Console.WriteLine("Getting All Elevators ... ");
+            Console.WriteLine("Initializing Device, Please wait.....");
 
-            using var client = new HttpClient();
-            elevatorItems = await client.GetFromJsonAsync<List<ElevatorItem>>(elevatorapi);
-            
-        }
-
-        private static async Task GetConfigurationAsync()
-        {
-            Console.Clear();
-            Console.WriteLine("Getting Connectionstring for Elevator ... ");
+            await Task.Delay(5000);
 
             using var client = new HttpClient();
             var response = await client.GetAsync(apiUri);
@@ -47,15 +42,61 @@ namespace Device.Tv.Livingroom
 
             if (response.IsSuccessStatusCode)
             {
-                deviceClient = DeviceClient.CreateFromConnectionString(connectionString.Result);
-                twin = await deviceClient.GetTwinAsync();
+                _deviceClient = DeviceClient.CreateFromConnectionString(connectionString.Result);
+                twin = await _deviceClient.GetTwinAsync();
                 var twinCollection = new TwinCollection();
-                
+
                 twinCollection["elevators"] = JsonConvert.SerializeObject(elevatorItems);
-                await deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+                await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+                await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
+            }                                  
+
+            await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
+
+            _connected = true;            
+
+        }
+        private static async Task Loop()
+        {
+            while (true)
+            {
+                if (_connected)
+                {
+                    twin = await _deviceClient.GetTwinAsync();
+                    Console.WriteLine(twin.ConnectionState.ToString());                                     
+                }
+                await Task.Delay(_Intervall);
             }
+
         }
 
+        private static async Task PrintShutDown(string request = null)
+        {
+            if (request.Equals("null"))
+            {
+                Console.WriteLine("Request null");
+            }
+            else
+            {
+                var result = JsonConvert.DeserializeObject<dynamic>(request);
+                Console.WriteLine(result.id);
+            }
+            
+        }
+        private static async Task<MethodResponse> ShutDown(MethodRequest request, object userContext)
+        {
+            try
+            {
+                await PrintShutDown(request.DataAsJson);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+            return await Task.FromResult(new MethodResponse(new byte[0], 200));
+        }
+        
     }
     
 }
