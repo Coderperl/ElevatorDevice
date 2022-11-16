@@ -18,7 +18,7 @@ namespace ElevatorDevice
         private static DeviceClient _deviceClient;        
         private static Twin twin;
         private static string elevatorapi = "https://agilewebapi.azurewebsites.net/api/Elevator";
-        private static string apiUri = "https://agilewebapi.azurewebsites.net/api/Create";
+        private static string apiUri = "https://localhost:7169/api";
         public static List<ElevatorItem> elevatorItems;
         private static int _Intervall = 5000;        
         private static bool _connected = false;
@@ -45,7 +45,7 @@ namespace ElevatorDevice
             await Task.Delay(5000);
 
             using var client = new HttpClient();
-            var response = await client.GetAsync(apiUri);
+            var response = await client.GetAsync($"{apiUri}/Create");
             var connectionString = response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
@@ -91,14 +91,20 @@ namespace ElevatorDevice
                 List<ElevatorItem> elevators = twin.Properties.Reported["elevators"].ToObject<List<ElevatorItem>>();
 
                 var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
-                Console.WriteLine(elevator.ShutDown);
+                Console.WriteLine("was: " + elevator.ShutDown);
                 elevator.ShutDown = !elevator.ShutDown;
                 
                 var twinCollection = new TwinCollection();
                 twinCollection["elevators"]= elevators;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
 
-                Console.WriteLine(elevator.ShutDown);
+                Console.WriteLine("became: " + elevator.ShutDown);
+
+                using var client = new HttpClient();
+
+                var payload = JsonConvert.SerializeObject(elevator);
+                var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
+                await client.PutAsync($"{apiUri}/Elevator/{elevator.Id}", httpContent);
             }
             
         }
