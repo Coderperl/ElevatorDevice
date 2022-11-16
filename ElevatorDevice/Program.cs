@@ -27,9 +27,17 @@ namespace ElevatorDevice
         
         private static async Task Main()
         {
+            GetElevators();
             await Setup();
             await Loop();
         }
+
+        private static async void GetElevators()
+        {
+            using var client = new HttpClient();
+            elevatorItems = await client.GetFromJsonAsync<List<ElevatorItem>>(elevatorapi);
+        }
+
         private static async Task Setup()
         {
             Console.WriteLine("Initializing Device, Please wait.....");
@@ -46,7 +54,7 @@ namespace ElevatorDevice
                 twin = await _deviceClient.GetTwinAsync();
                 var twinCollection = new TwinCollection();
 
-                twinCollection["elevators"] = JsonConvert.SerializeObject(elevatorItems);
+                twinCollection["elevators"] = elevatorItems;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
                 await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
             }                                  
@@ -79,7 +87,18 @@ namespace ElevatorDevice
             else
             {
                 var result = JsonConvert.DeserializeObject<dynamic>(request);
-                Console.WriteLine(result.id);
+                Console.WriteLine(result.id);                
+                List<ElevatorItem> elevators = twin.Properties.Reported["elevators"].ToObject<List<ElevatorItem>>();
+
+                var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
+                Console.WriteLine(elevator.ShutDown);
+                elevator.ShutDown = !elevator.ShutDown;
+                
+                var twinCollection = new TwinCollection();
+                twinCollection["elevators"]= elevators;
+                await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+
+                Console.WriteLine(elevator.ShutDown);
             }
             
         }

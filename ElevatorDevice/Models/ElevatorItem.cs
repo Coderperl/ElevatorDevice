@@ -20,4 +20,5 @@ namespace ElevatorDevice.Models
         public int Floor { get; set; }
         public string ElevatorStatus { get; set; }
     }
+
 }
