@@ -17,8 +17,8 @@ namespace ElevatorDevice
     {
         private static DeviceClient _deviceClient;        
         private static Twin twin;
-        private static string elevatorapi = "https://localhost:7169/api/Elevator";
-        private static string apiUri = "https://localhost:7169/api";
+        private static string elevatorapi = "https://agilewebapi.azurewebsites.net/api/Elevator";
+        private static string apiUri = "https://agilewebapi.azurewebsites.net/api";
         public static List<ElevatorItem> elevatorItems;
         private static int _Intervall = 5000;        
         private static bool _connected = false;
@@ -57,7 +57,7 @@ namespace ElevatorDevice
                 twinCollection["elevators"] = elevatorItems;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
                 await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
-
+		await _deviceClient.SetMethodHandlerAsync("DoorAction", DoorAction, _deviceClient)
                 await _deviceClient.SetMethodHandlerAsync("Reset", Reset, _deviceClient);
             }                                  
 			}
