@@ -15,16 +15,16 @@ namespace ElevatorDevice
 {
     class Program
     {
-        private static DeviceClient _deviceClient;        
+        private static DeviceClient _deviceClient;
         private static Twin twin;
         private static string elevatorapi = "https://agilewebapi.azurewebsites.net/api/Elevator";
         private static string apiUri = "https://agilewebapi.azurewebsites.net/api";
         public static List<ElevatorItem> elevatorItems;
-        private static int _Intervall = 5000;        
+        private static int _Intervall = 5000;
         private static bool _connected = false;
         private static string _deviceId = "";
 
-        
+
         private static async Task Main()
         {
             GetElevators();
@@ -37,6 +37,8 @@ namespace ElevatorDevice
             using var client = new HttpClient();
             elevatorItems = await client.GetFromJsonAsync<List<ElevatorItem>>(elevatorapi);
         }
+
+        
 
         private static async Task Setup()
         {
@@ -57,16 +59,10 @@ namespace ElevatorDevice
                 twinCollection["elevators"] = elevatorItems;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
                 await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
-		await _deviceClient.SetMethodHandlerAsync("DoorAction", DoorAction, _deviceClient)
+                await _deviceClient.SetMethodHandlerAsync("DoorAction", DoorAction, _deviceClient);
                 await _deviceClient.SetMethodHandlerAsync("Reset", Reset, _deviceClient);
-            }                                  
-			}
-            await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
-            await _deviceClient.SetMethodHandlerAsync("Reset", Reset, _deviceClient);
-
-
-			_connected = true;            
-
+            }
+            _connected = true;
         }
         private static async Task Loop()
         {
@@ -75,13 +71,13 @@ namespace ElevatorDevice
                 if (_connected)
                 {
                     twin = await _deviceClient.GetTwinAsync();
-                    Console.WriteLine(twin.ConnectionState.ToString());                                     
+                    Console.WriteLine(twin.ConnectionState.ToString());
                 }
+
                 await Task.Delay(_Intervall);
             }
 
         }
-
         private static async Task PrintShutDown(string request = null)
         {
             if (request.Equals("null"))
@@ -91,15 +87,15 @@ namespace ElevatorDevice
             else
             {
                 var result = JsonConvert.DeserializeObject<dynamic>(request);
-                Console.WriteLine(result.id);                
+                Console.WriteLine(result.id);
                 List<ElevatorItem> elevators = twin.Properties.Reported["elevators"].ToObject<List<ElevatorItem>>();
 
                 var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
                 Console.WriteLine("was: " + elevator.ShutDown);
                 elevator.ShutDown = !elevator.ShutDown;
-                
+
                 var twinCollection = new TwinCollection();
-                twinCollection["elevators"]= elevators;
+                twinCollection["elevators"] = elevators;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
 
                 Console.WriteLine("became: " + elevator.ShutDown);
@@ -169,54 +165,58 @@ namespace ElevatorDevice
             }
 
         }
+        private static async Task PrintOpenDoor(string request = null)
+        {
+            if (request.Equals("null"))
+            {
+                Console.WriteLine("Request null");
+            }
+            else
+            {
+                var result = JsonConvert.DeserializeObject<dynamic>(request);
+                Console.WriteLine(result.id);
+                List<ElevatorItem> elevators = twin.Properties.Reported["elevators"].ToObject<List<ElevatorItem>>();
+
+                var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
+                Console.WriteLine("Door was: " + elevator.Door);
+                elevator.Door = !elevator.Door;
+
+                var twinCollection = new TwinCollection();
+                twinCollection["elevators"] = elevators;
+                await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+
+                Console.WriteLine("door became: " + elevator.Door);
+
+                using var client = new HttpClient();
+
+                var payload = JsonConvert.SerializeObject(elevator);
+                var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
+                await client.PutAsync($"{apiUri}/Elevator/{elevator.Id}", httpContent);
+            }
+
+        }
+
+        private static async Task<MethodResponse> DoorAction(MethodRequest request, object userContext)
+        {
+            try
+            {
+                await PrintOpenDoor(request.DataAsJson);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+            return await Task.FromResult(new MethodResponse(new byte[0], 200));
+        }
     }
 
 
-		private static async Task PrintOpenDoor(string request = null)
-		{
-			if (request.Equals("null"))
-			{
-				Console.WriteLine("Request null");
-			}
-			else
-			{
-				var result = JsonConvert.DeserializeObject<dynamic>(request);
-				Console.WriteLine(result.id);
-				List<ElevatorItem> elevators = twin.Properties.Reported["elevators"].ToObject<List<ElevatorItem>>();
-
-				var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
-				Console.WriteLine("Door was: " + elevator.Door);
-				elevator.Door = !elevator.Door;
-
-				var twinCollection = new TwinCollection();
-				twinCollection["elevators"] = elevators;
-				await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
-
-				Console.WriteLine("door became: " + elevator.Door);
-
-				using var client = new HttpClient();
-
-				var payload = JsonConvert.SerializeObject(elevator);
-				var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
-				await client.PutAsync($"{apiUri}/Elevator/{elevator.Id}", httpContent);
-			}
-
-		}
-
-		private static async Task<MethodResponse> DoorAction(MethodRequest request, object userContext)
-		{
-			try
-			{
-				await PrintOpenDoor(request.DataAsJson);
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine(e.Message);
-			}
-
-			return await Task.FromResult(new MethodResponse(new byte[0], 200));
-		}
-
-	}
-    
 }
+
+
+
+        
+
+        
+
