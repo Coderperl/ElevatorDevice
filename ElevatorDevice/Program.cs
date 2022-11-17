@@ -57,11 +57,13 @@ namespace ElevatorDevice
                 twinCollection["elevators"] = elevatorItems;
                 await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
                 await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
-            }                                  
+				await _deviceClient.SetMethodHandlerAsync("DoorAction", DoorAction, _deviceClient);
 
+			}
             await _deviceClient.SetMethodHandlerAsync("ShutDown", ShutDown, _deviceClient);
 
-            _connected = true;            
+
+			_connected = true;            
 
         }
         private static async Task Loop()
@@ -121,7 +123,53 @@ namespace ElevatorDevice
 
             return await Task.FromResult(new MethodResponse(new byte[0], 200));
         }
-        
-    }
+
+
+		private static async Task PrintOpenDoor(string request = null)
+		{
+			if (request.Equals("null"))
+			{
+				Console.WriteLine("Request null");
+			}
+			else
+			{
+				var result = JsonConvert.DeserializeObject<dynamic>(request);
+				Console.WriteLine(result.id);
+				List<ElevatorItem> elevators = twin.Properties.Reported["elevators"].ToObject<List<ElevatorItem>>();
+
+				var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
+				Console.WriteLine("Door was: " + elevator.Door);
+				elevator.Door = !elevator.Door;
+
+				var twinCollection = new TwinCollection();
+				twinCollection["elevators"] = elevators;
+				await _deviceClient.UpdateReportedPropertiesAsync(twinCollection);
+
+				Console.WriteLine("door became: " + elevator.Door);
+
+				using var client = new HttpClient();
+
+				var payload = JsonConvert.SerializeObject(elevator);
+				var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
+				await client.PutAsync($"{apiUri}/Elevator/{elevator.Id}", httpContent);
+			}
+
+		}
+
+		private static async Task<MethodResponse> DoorAction(MethodRequest request, object userContext)
+		{
+			try
+			{
+				await PrintOpenDoor(request.DataAsJson);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e.Message);
+			}
+
+			return await Task.FromResult(new MethodResponse(new byte[0], 200));
+		}
+
+	}
     
 }
