@@ -18,6 +18,9 @@ namespace ElevatorDevice.Models
         public bool ShutDown { get; set; }
         public bool Door { get; set; }
         public int Floor { get; set; }
+        public int MaxFloor { get; set; }
+        public int MinFloor { get; set; }
+        public string ElevatorType { get; set; }
         public string ElevatorStatus { get; set; }
     }
 
