@@ -18,7 +18,7 @@ namespace ElevatorDevice
         private static DeviceClient _deviceClient;
         private static Twin twin;
         private static string elevatorapi = "https://agilewebapi.azurewebsites.net/api/Elevator";
-        private static string apiUri = "https://agilewebapi.azurewebsites.net/api";
+        private static string apiUri = "https://localhost:7169/api";
         public static List<ElevatorItem> elevatorItems;
         private static int _Intervall = 5000;
         private static bool _connected = false;
