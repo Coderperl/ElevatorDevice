@@ -224,7 +224,7 @@ namespace ElevatorDevice
 
                 var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
                 Console.WriteLine("Floor was: " + elevator.Floor);
-                
+                elevator.Floor = result.floor;                                
 
                 var twinCollection = new TwinCollection();
                 twinCollection["elevators"] = elevators;
