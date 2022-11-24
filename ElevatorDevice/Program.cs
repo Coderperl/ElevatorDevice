@@ -94,6 +94,13 @@ namespace ElevatorDevice
                 var elevator = elevators.Find(e => e.Id == Convert.ToInt16(result.id));
                 Console.WriteLine("was: " + elevator.ShutDown);
                 elevator.ShutDown = !elevator.ShutDown;
+                if(elevator.ElevatorStatus == "Active")
+                {
+                    elevator.ElevatorStatus = "Inactive";
+                } else
+                {
+                    elevator.ElevatorStatus = "Active";
+                }
 
                 var twinCollection = new TwinCollection();
                 twinCollection["elevators"] = elevators;
